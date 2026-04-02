@@ -81,7 +81,8 @@ function runSetupCommands() {
     "bun add react-dropzone@^14.2.3",
     "bun add @hookform/resolvers zod",
     "bun add recharts",
-    "bun add lucide-react@latest"
+    "bun add lucide-react@latest",
+    "bun add @tanstack/react-query-devtools"
 ];
     
     if (commands.length === 0) {
