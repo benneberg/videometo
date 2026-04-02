@@ -1,17 +1,24 @@
 export interface VideoMetadata {
   codec: string;
+  codec_name?: string;
   bitrate: number;
   fps: number;
+  r_frame_rate?: string;
   resolution: string;
+  width?: number;
+  height?: number;
   duration: number;
   format: string;
   color_space: string;
+  profile?: string;
 }
 export interface AudioMetadata {
   codec: string;
+  codec_name?: string;
   channels: number;
   sample_rate: number;
   bitrate: number;
+  bits_per_sample?: number;
 }
 export type RuleOperator = 'eq' | 'lte' | 'gte' | 'contains' | 'regex';
 export interface Rule {
@@ -101,6 +108,12 @@ export interface SystemActivity {
   timestamp: string;
   status: 'success' | 'failure' | 'info';
   asset_id?: string;
+}
+export interface ManualSection {
+  title: string;
+  slug: string;
+  content: string;
+  icon: string;
 }
 export interface BatchActionRequest {
   assetIds: string[];

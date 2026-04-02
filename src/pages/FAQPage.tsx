@@ -6,7 +6,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Button } from "@/components/ui/button";
 import { HelpCircle, Terminal, ShieldAlert, Cpu } from 'lucide-react';
 const FAQ_DATA = [
   {
@@ -66,7 +65,7 @@ export function FAQPage() {
           </p>
         </div>
         <div className="space-y-10">
-          {FAQ_DATA.map((group, i) => (group.items.length > 0 && (
+          {FAQ_DATA.map((group, i) => (
             <div key={i} className="space-y-6">
               <div className="flex items-center gap-3 px-4">
                 <group.icon className="h-5 w-5 text-primary" />
@@ -77,8 +76,8 @@ export function FAQPage() {
               <div className="grid gap-4">
                 <Accordion type="single" collapsible className="w-full space-y-3">
                   {group.items.map((item, j) => (
-                    <AccordionItem
-                      key={j}
+                    <AccordionItem 
+                      key={j} 
                       value={`item-${i}-${j}`}
                       className="bg-card border rounded-2xl px-6 py-1 shadow-sm overflow-hidden"
                     >
@@ -93,7 +92,7 @@ export function FAQPage() {
                 </Accordion>
               </div>
             </div>
-          )))}
+          ))}
         </div>
         <div className="bg-zinc-950 p-8 rounded-3xl text-center space-y-4 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-mesh opacity-10 pointer-events-none" />

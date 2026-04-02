@@ -16,12 +16,9 @@ import {
   FileText,
   Activity,
   ShieldAlert,
-  RefreshCw, CheckCircle2,
   Terminal,
   Lightbulb,
-  GitBranch,
   Zap,
-  Play,
   FileBadge,
   Database
 } from 'lucide-react';
@@ -52,11 +49,6 @@ export function AssetDetailPage() {
     enabled: !!asset?.current_job_id,
     refetchInterval: 2000
   });
-  const { data: variantsData } = useQuery<ApiResponse<Asset[]>>({
-    queryKey: ['asset-variants', id],
-    queryFn: () => fetch(`/api/assets/${id}/variants`).then(res => res.json()),
-    enabled: !!id
-  });
   const { data: profilesData } = useQuery<ApiResponse<Profile[]>>({
     queryKey: ['profiles'],
     queryFn: () => fetch('/api/profiles').then(res => res.json())
@@ -67,13 +59,12 @@ export function AssetDetailPage() {
       body: JSON.stringify({ targetProfileId: profileId })
     }).then(res => res.json()),
     onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ['asset-variants', id] });
+      queryClient.invalidateQueries({ queryKey: ['assets'] });
       setIsTransformDialogOpen(false);
       toast.success("Transformation job initiated");
       if (res.data?.id) navigate(`/assets/${res.data.id}`);
     }
   });
-  const variants = variantsData?.data ?? [];
   const profiles = profilesData?.data ?? [];
   const activeProfile = profiles.find(p => p.id === asset?.profile_id);
   const job = jobData?.data;
@@ -85,6 +76,10 @@ export function AssetDetailPage() {
       bitrate: Number((base + (Math.random() * 1.5 - 0.75)).toFixed(2))
     }));
   }, [asset]);
+  const formatLogTime = (ts: string) => {
+    const d = new Date(ts);
+    return d.toLocaleTimeString('en-US', { hour12: false });
+  };
   if (isLoading) return <AppLayout><div className="animate-pulse py-12 text-center font-mono">INITIATING_PROBE...</div></AppLayout>;
   if (!asset) return <AppLayout><div className="py-12 text-center">Not found.</div></AppLayout>;
   return (
@@ -167,8 +162,8 @@ export function AssetDetailPage() {
                 <CardHeader><CardTitle className="text-sm font-semibold flex items-center gap-2"><Lightbulb className="h-4 w-4" /> System Guidance</CardTitle></CardHeader>
                 <CardContent>
                   <div className="p-4 bg-zinc-950 text-zinc-300 rounded-lg text-xs font-mono leading-relaxed">
-                    {asset.status === 'pass' 
-                      ? "> ASSET_COMPLIANT\n> NO_REMEDIATION_REQUIRED\n> READY_FOR_PLAYOUT" 
+                    {asset.status === 'pass'
+                      ? "> ASSET_COMPLIANT\n> NO_REMEDIATION_REQUIRED\n> READY_FOR_PLAYOUT"
                       : "> VIOLATIONS_DETECTED\n> TARGET_PROFILE_MISMATCH\n> RUN_TRANSFORM_TO_FIX"}
                   </div>
                 </CardContent>
@@ -183,14 +178,14 @@ export function AssetDetailPage() {
                   {asset.metadata?.video ? (
                     <>
                       <div className="grid grid-cols-3 gap-4 text-xs">
-                        <div><span className="text-muted-foreground">Codec</span><div className="font-mono font-semibold">{asset.metadata.video.codec_name}</div></div>
+                        <div><span className="text-muted-foreground">Codec</span><div className="font-mono font-semibold">{asset.metadata.video.codec_name || asset.metadata.video.codec}</div></div>
                         <div><span className="text-muted-foreground">Resolution</span><div className="font-mono font-semibold">{asset.metadata.video.width}x{asset.metadata.video.height}</div></div>
                         <div><span className="text-muted-foreground">Duration</span><div className="font-mono font-semibold">{asset.metadata.video.duration ? (asset.metadata.video.duration.toFixed(1) + 's') : 'N/A'}</div></div>
                       </div>
                       <div className="grid grid-cols-3 gap-4 text-xs">
                         <div><span className="text-muted-foreground">Bitrate</span><div className="font-mono font-semibold">{asset.metadata.video.bitrate ? ((asset.metadata.video.bitrate/1000000).toFixed(1) + ' Mbps') : 'N/A'}</div></div>
-                        <div><span className="text-muted-foreground">FPS</span><div className="font-mono font-semibold">{asset.metadata.video.r_frame_rate}</div></div>
-                        <div><span className="text-muted-foreground">Profile</span><div className="font-mono font-semibold">{asset.metadata.video.profile}</div></div>
+                        <div><span className="text-muted-foreground">FPS</span><div className="font-mono font-semibold">{asset.metadata.video.r_frame_rate || asset.metadata.video.fps}</div></div>
+                        <div><span className="text-muted-foreground">Profile</span><div className="font-mono font-semibold">{asset.metadata.video.profile || 'N/A'}</div></div>
                       </div>
                     </>
                   ) : (
@@ -204,7 +199,7 @@ export function AssetDetailPage() {
                   {asset.metadata?.audio ? (
                     <>
                       <div className="grid grid-cols-3 gap-4 text-xs">
-                        <div><span className="text-muted-foreground">Codec</span><div className="font-mono font-semibold">{asset.metadata.audio.codec_name}</div></div>
+                        <div><span className="text-muted-foreground">Codec</span><div className="font-mono font-semibold">{asset.metadata.audio.codec_name || asset.metadata.audio.codec}</div></div>
                         <div><span className="text-muted-foreground">Channels</span><div className="font-mono font-semibold">{asset.metadata.audio.channels}</div></div>
                         <div><span className="text-muted-foreground">Sample Rate</span><div className="font-mono font-semibold">{asset.metadata.audio.sample_rate}Hz</div></div>
                       </div>
@@ -234,7 +229,7 @@ export function AssetDetailPage() {
                   ) : (
                     job.logs.map((log, i) => (
                       <div key={i} className="p-3 flex gap-4 hover:bg-white/5 transition-colors">
-                        <span className="text-zinc-600 shrink-0">[{new Date(log.timestamp).toLocaleTimeString('en-US', {hour12: false, fractionalSecondDigits: 3 })}]</span>
+                        <span className="text-zinc-600 shrink-0">[{formatLogTime(log.timestamp)}]</span>
                         <span className={log.level === 'error' ? 'text-rose-500' : (log.level === 'warn' ? 'text-amber-500' : 'text-blue-400')}>
                           {log.message}
                         </span>
@@ -248,7 +243,7 @@ export function AssetDetailPage() {
           <TabsContent value="validation" className="space-y-4 pt-6">
             {!asset.validation?.violations.length ? (
               <Alert className="bg-emerald-500/5 py-10 flex flex-col items-center border-emerald-500/20 text-center">
-                <CheckCircle2 className="h-10 w-10 text-emerald-600 mb-4" />
+                <ShieldAlert className="h-10 w-10 text-emerald-600 mb-4" />
                 <AlertTitle className="text-emerald-800 text-xl font-bold">Deterministic Pass</AlertTitle>
                 <AlertDescription className="text-emerald-700/80">Asset signature verified against {activeProfile?.name}.</AlertDescription>
               </Alert>

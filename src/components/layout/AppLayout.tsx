@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import {
   LayoutDashboard,
@@ -7,7 +7,9 @@ import {
   Settings,
   ShieldCheck,
   Loader2,
-  Webhook
+  Webhook,
+  HelpCircle,
+  BookOpen
 } from "lucide-react";
 import {
   Sidebar,
@@ -22,12 +24,16 @@ import {
 import { Link, useLocation } from "react-router-dom";
 import { useIsFetching } from '@tanstack/react-query';
 import { JobMonitor } from "@/components/JobMonitor";
+import { OnboardingModal } from "@/components/OnboardingModal";
+import { Button } from "@/components/ui/button";
 export function AppSidebar(): JSX.Element {
   const location = useLocation();
   const navItems = [
     { title: "Dashboard", icon: LayoutDashboard, path: "/" },
     { title: "Asset Library", icon: Video, path: "/assets" },
     { title: "Profiles", icon: FileBadge, path: "/profiles" },
+    { title: "User Manual", icon: BookOpen, path: "/manual" },
+    { title: "FAQ", icon: HelpCircle, path: "/faq" },
     { title: "Settings", icon: Settings, path: "/settings" },
   ];
   return (
@@ -81,6 +87,7 @@ type AppLayoutProps = {
 };
 export function AppLayout({ children, className }: AppLayoutProps): JSX.Element {
   const isFetching = useIsFetching();
+  const [showOnboarding, setShowOnboarding] = useState(false);
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar />
@@ -88,17 +95,28 @@ export function AppLayout({ children, className }: AppLayoutProps): JSX.Element 
         <header className="flex h-14 items-center gap-4 border-b bg-background/80 backdrop-blur-md px-6 sticky top-0 z-40">
           <SidebarTrigger />
           <div className="flex-1" />
-          {isFetching > 0 && (
-            <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono animate-in fade-in duration-300 bg-muted/50 px-2 py-1 rounded">
-              <Loader2 className="h-3 w-3 animate-spin text-primary" />
-              <span>SYNC_IN_PROGRESS</span>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {isFetching > 0 && (
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono animate-in fade-in duration-300 bg-muted/50 px-2 py-1 rounded">
+                <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                <span>SYNC</span>
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowOnboarding(true)}
+              className="rounded-full hover:bg-muted"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </Button>
+          </div>
         </header>
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12 w-full min-h-[calc(100vh-3.5rem)] overflow-y-auto">
           {children}
         </main>
         <JobMonitor />
+        <OnboardingModal isOpen={showOnboarding} onClose={() => setShowOnboarding(false)} />
       </SidebarInset>
     </SidebarProvider>
   );
