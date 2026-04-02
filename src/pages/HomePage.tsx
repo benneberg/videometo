@@ -3,21 +3,22 @@ import { useDropzone } from 'react-dropzone';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { 
-  Upload, 
-  BarChart3, 
-  FileVideo, 
-  ShieldCheck, 
-  ArrowRight, 
-  Activity, 
-  Clock, 
-  CheckCircle2, 
+import {
+  Upload,
+  BarChart3,
+  FileVideo,
+  ShieldCheck,
+  ArrowRight,
+  Activity,
+  Clock,
+  CheckCircle2,
   AlertCircle,
   Zap
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { ApiResponse, SystemActivity, Asset } from '@shared/types';
@@ -144,7 +145,7 @@ export function HomePage() {
                       <div key={item.id} className="p-4 hover:bg-muted/10 transition-colors">
                         <div className="flex gap-3">
                           <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${
-                            item.status === 'success' ? 'bg-emerald-500' : 
+                            item.status === 'success' ? 'bg-emerald-500' :
                             item.status === 'failure' ? 'bg-rose-500' : 'bg-blue-500'
                           }`} />
                           <div className="space-y-1">

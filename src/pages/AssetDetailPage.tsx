@@ -16,7 +16,7 @@ import {
   FileText,
   Activity,
   ShieldAlert,
-  RefreshCw,
+  RefreshCw, CheckCircle2,
   Terminal,
   BarChart3,
   Lightbulb,
@@ -186,7 +186,7 @@ export function AssetDetailPage() {
           <TabsContent value="validation" className="space-y-4 pt-6">
             {!asset.validation?.violations.length ? (
               <Alert className="bg-emerald-500/5 py-10 flex flex-col items-center border-emerald-500/20 text-center">
-                <CheckCircle className="h-10 w-10 text-emerald-600 mb-4" />
+                <CheckCircle2 className="h-10 w-10 text-emerald-600 mb-4" />
                 <AlertTitle className="text-emerald-800 text-xl font-bold">Compliant Asset</AlertTitle>
                 <AlertDescription className="text-emerald-700/80">Asset satisfies all rules for {activeProfile?.name}.</AlertDescription>
               </Alert>
