@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Printer, Download, ShieldCheck, FileText, CheckCircle2, XCircle, Info } from "lucide-react";
+import { Printer, Download, ShieldCheck, FileText, CheckCircle, XCircle, Info } from "lucide-react";
 import type { Asset, Profile } from "@shared/types";
 import { format } from "date-fns";
 interface ComplianceReportModalProps {
@@ -81,7 +81,7 @@ export function ComplianceReportModal({ isOpen, onClose, asset, profile }: Compl
               </div>
               <div className="space-y-1">
                 <p className="text-[10px] text-muted-foreground font-bold uppercase">Bitrate</p>
-                <p className="text-sm font-mono font-bold">{( (asset.metadata?.video.bitrate ?? 0) / 1000000).toFixed(1)} Mbps</p>
+                <p className="text-sm font-mono font-bold">{(asset.metadata?.video.bitrate! / 1000000).toFixed(1)} Mbps</p>
               </div>
               <div className="space-y-1">
                 <p className="text-[10px] text-muted-foreground font-bold uppercase">Frame Rate</p>
@@ -94,7 +94,7 @@ export function ComplianceReportModal({ isOpen, onClose, asset, profile }: Compl
             <h3 className="text-lg font-bold">Violation Audit Log</h3>
             {violations.length === 0 ? (
               <div className="bg-emerald-500/5 border border-emerald-500/20 p-4 rounded-xl flex items-center gap-3 text-emerald-700">
-                <CheckCircle2 className="h-5 w-5" />
+                <CheckCircle className="h-5 w-5" />
                 <span className="text-sm font-medium">All technical constraints satisfied. No violations detected.</span>
               </div>
             ) : (

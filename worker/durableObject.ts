@@ -1,14 +1,14 @@
 import { DurableObject } from "cloudflare:workers";
-import type { 
-  Asset, 
-  Profile, 
-  Rule, 
-  ValidationViolation, 
-  ValidationResult, 
-  ProfileCreate, 
-  ProfileUpdate, 
+import type {
+  Asset,
+  Profile,
+  Rule,
+  ValidationViolation,
+  ValidationResult,
+  ProfileCreate,
+  ProfileUpdate,
   AssetStatus,
-  TransformationJob
+  SystemActivity
 } from '@shared/types';
 const DEFAULT_PROFILES: Profile[] = [
   {
@@ -16,9 +16,9 @@ const DEFAULT_PROFILES: Profile[] = [
     name: 'Retail 1080p H264',
     description: 'Standard high-definition profile for retail digital signage.',
     rules: [
-      { id: 'r1', field: 'video.resolution', operator: 'eq', value: '1920x1080', severity: 'critical', message: 'Resolution must be exactly 1080p', fix: 'Transcode to 1920x1080' },
-      { id: 'r2', field: 'video.bitrate', operator: 'lte', value: 10000000, severity: 'warning', message: 'Bitrate exceeds 10Mbps', fix: 'Reduce constant bitrate to 8-10Mbps' },
-      { id: 'r3', field: 'video.codec', operator: 'eq', value: 'h264', severity: 'critical', message: 'Codec must be H.264', fix: 'Re-encode using libx264' }
+      { id: 'r1', field: 'video.resolution', operator: 'eq', value: '1920x1080', severity: 'critical', message: 'Resolution must be exactly 1080p', fix: 'Transcode to 1920x1080', reason: 'Ensures pixel-perfect mapping on 1080p hardware displays.' },
+      { id: 'r2', field: 'video.bitrate', operator: 'lte', value: 10000000, severity: 'warning', message: 'Bitrate exceeds 10Mbps', fix: 'Reduce constant bitrate to 8-10Mbps', reason: 'Prevents network congestion on remote signage players.' },
+      { id: 'r3', field: 'video.codec', operator: 'eq', value: 'h264', severity: 'critical', message: 'Codec must be H.264', fix: 'Re-encode using libx264', reason: 'Ensures hardware decoding support across all deployed legacy devices.' }
     ],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
@@ -43,10 +43,21 @@ export class GlobalDurableObject extends DurableObject {
     await this.ctx.storage.put("assets", assets);
     return assets[index];
   }
-  async deleteAssets(ids: string[]): Promise<void> {
-    const assets = await this.getAssets();
-    const updated = assets.filter(a => !ids.includes(a.id));
-    await this.ctx.storage.put("assets", updated);
+  async logActivity(type: SystemActivity['type'], message: string, status: SystemActivity['status'], asset_id?: string) {
+    const logs = (await this.ctx.storage.get<SystemActivity[]>("activity_log")) || [];
+    const newLog: SystemActivity = {
+      id: crypto.randomUUID(),
+      type,
+      message,
+      timestamp: new Date().toISOString(),
+      status,
+      asset_id
+    };
+    const updated = [newLog, ...logs].slice(0, 50);
+    await this.ctx.storage.put("activity_log", updated);
+  }
+  async getRecentActivity(): Promise<SystemActivity[]> {
+    return (await this.ctx.storage.get<SystemActivity[]>("activity_log")) || [];
   }
   async getProfiles(): Promise<Profile[]> {
     const stored = await this.ctx.storage.get<Profile[]>("profiles");
@@ -64,24 +75,8 @@ export class GlobalDurableObject extends DurableObject {
     };
     profiles.push(newProfile);
     await this.ctx.storage.put("profiles", profiles);
+    await this.logActivity('system', `New profile created: ${newProfile.name}`, 'info');
     return newProfile;
-  }
-  async updateProfile(id: string, data: ProfileUpdate): Promise<Profile | undefined> {
-    const profiles = await this.getProfiles();
-    const index = profiles.findIndex(p => p.id === id);
-    if (index === -1) return undefined;
-    profiles[index] = {
-      ...profiles[index],
-      ...data,
-      updated_at: new Date().toISOString()
-    };
-    await this.ctx.storage.put("profiles", profiles);
-    return profiles[index];
-  }
-  async deleteProfile(id: string): Promise<void> {
-    const profiles = await this.getProfiles();
-    const updated = profiles.filter(p => p.id !== id);
-    await this.ctx.storage.put("profiles", updated);
   }
   async createAsset(filename: string, size: number, profileId?: string): Promise<Asset> {
     const assets = await this.getAssets();
@@ -94,8 +89,8 @@ export class GlobalDurableObject extends DurableObject {
       profile_id: profileId,
       created_at: new Date().toISOString()
     };
-    const updated = [newAsset, ...assets];
-    await this.ctx.storage.put("assets", updated);
+    await this.ctx.storage.put("assets", [newAsset, ...assets]);
+    await this.logActivity('ingest', `Ingested asset: ${filename}`, 'success', newAsset.id);
     this.processAsset(newAsset.id);
     return newAsset;
   }
@@ -105,114 +100,62 @@ export class GlobalDurableObject extends DurableObject {
     const profiles = await this.getProfiles();
     const targetProfile = profiles.find(p => p.id === targetProfileId);
     if (!targetProfile) return undefined;
-    const assets = await this.getAssets();
     const variantAsset: Asset = {
       id: crypto.randomUUID(),
       filename: `${source.filename.split('.')[0]}_${targetProfile.name.replace(/\s+/g, '_')}.mp4`,
-      size: source.size * (0.6 + Math.random() * 0.3), // Simulate optimized size
+      size: source.size * 0.8,
       status: 'transcoding',
       processing_progress: 0,
       profile_id: targetProfileId,
       created_at: new Date().toISOString(),
       parent_id: sourceId,
-      lineage_root_id: source.lineage_root_id || sourceId,
-      job_id: crypto.randomUUID()
     };
-    const updated = [variantAsset, ...assets];
-    await this.ctx.storage.put("assets", updated);
+    const assets = await this.getAssets();
+    await this.ctx.storage.put("assets", [variantAsset, ...assets]);
+    await this.logActivity('transform', `Transformation started for ${source.filename}`, 'info', variantAsset.id);
     this.processTransformation(variantAsset.id, sourceId, targetProfileId);
     return variantAsset;
   }
-  private async processTransformation(variantId: string, sourceId: string, profileId: string) {
-    const variant = await this.getAssetDetails(variantId);
-    const source = await this.getAssetDetails(sourceId);
-    const profiles = await this.getProfiles();
-    const targetProfile = profiles.find(p => p.id === profileId);
-    if (!variant || !source || !targetProfile) return;
-    // Simulate transcoding delay and progress
-    const steps = [20, 50, 85, 100];
-    for (const progress of steps) {
-      await new Promise(r => setTimeout(r, 1000));
-      await this.updateAsset(variantId, { processing_progress: progress });
-    }
-    // Generate Transformed Metadata aligned with profile
-    // We deterministically map source metadata to profile rules
-    const videoMetadata = { ...(source.metadata?.video || {
-      codec: 'h264',
-      bitrate: 8000000,
-      fps: 30,
-      resolution: '1920x1080',
-      duration: 30,
-      format: 'mp4',
-      color_space: 'bt709'
-    }) };
-    // Apply "transformations" based on rules to fix things
-    targetProfile.rules.forEach(rule => {
-      if (rule.field === 'video.resolution' && rule.operator === 'eq') videoMetadata.resolution = String(rule.value);
-      if (rule.field === 'video.codec' && rule.operator === 'eq') videoMetadata.codec = String(rule.value);
-      if (rule.field === 'video.bitrate' && rule.operator === 'lte') videoMetadata.bitrate = Math.min(videoMetadata.bitrate, Number(rule.value));
-    });
-    const transformedMetadata = {
-      video: videoMetadata,
-      audio: source.metadata?.audio || { codec: 'aac', channels: 2, sample_rate: 48000, bitrate: 192000 }
-    };
-    const validation = this.runValidationLogic(transformedMetadata, targetProfile);
-    await this.updateAsset(variantId, {
-      status: validation.status,
-      metadata: transformedMetadata,
-      validation,
-      processing_progress: 100
-    });
-  }
-  private async processAsset(assetId: string) {
-    const asset = await this.getAssetDetails(assetId);
+  private async processAsset(id: string) {
+    await this.updateAsset(id, { status: 'processing', processing_progress: 25 });
+    await new Promise(r => setTimeout(r, 1000));
+    const asset = await this.getAssetDetails(id);
     if (!asset) return;
-    await this.updateAsset(assetId, { status: 'processing', processing_progress: 25 });
-    await new Promise(r => setTimeout(r, 800));
-    await this.updateAsset(assetId, { processing_progress: 60 });
-    await new Promise(r => setTimeout(r, 800));
-    const mockMetadata = {
-      video: {
-        codec: Math.random() > 0.2 ? 'h264' : 'prores',
-        bitrate: Math.floor(Math.random() * 15000000) + 5000000,
-        fps: 29.97,
-        resolution: Math.random() > 0.3 ? '1920x1080' : '3840x2160',
-        duration: 30.5,
-        format: 'mov',
-        color_space: 'bt709'
-      },
-      audio: {
-        codec: 'aac',
-        channels: 2,
-        sample_rate: 48000,
-        bitrate: 192000
-      }
-    };
     const profiles = await this.getProfiles();
-    const targetProfile = profiles.find(p => p.id === asset.profile_id) || profiles[0];
-    const validation = this.runValidationLogic(mockMetadata, targetProfile);
-    await this.updateAsset(assetId, {
-      status: validation.status,
-      processing_progress: 100,
-      metadata: mockMetadata,
-      validation,
-      profile_id: targetProfile.id
-    });
+    const profile = profiles.find(p => p.id === asset.profile_id) || profiles[0];
+    const mockMeta = {
+      video: { codec: 'prores', bitrate: 15000000, fps: 29.97, resolution: '3840x2160', duration: 15, format: 'mov', color_space: 'bt709' },
+      audio: { codec: 'pcm', channels: 2, sample_rate: 48000, bitrate: 1536000 }
+    };
+    const validation = this.runValidationLogic(mockMeta, profile);
+    await this.updateAsset(id, { status: validation.status, metadata: mockMeta, validation, processing_progress: 100 });
+    await this.logActivity('validation', `Validation completed for ${asset.filename} (${validation.status})`, validation.status === 'pass' ? 'success' : 'failure', id);
+  }
+  private async processTransformation(vId: string, sId: string, pId: string) {
+    const steps = [30, 60, 100];
+    for (const p of steps) {
+      await new Promise(r => setTimeout(r, 800));
+      await this.updateAsset(vId, { processing_progress: p });
+    }
+    const profiles = await this.getProfiles();
+    const profile = profiles.find(p => p.id === pId);
+    if (!profile) return;
+    const transformedMeta = {
+      video: { codec: 'h264', bitrate: 8000000, fps: 29.97, resolution: '1920x1080', duration: 15, format: 'mp4', color_space: 'bt709' },
+      audio: { codec: 'aac', channels: 2, sample_rate: 48000, bitrate: 192000 }
+    };
+    const val = this.runValidationLogic(transformedMeta, profile);
+    await this.updateAsset(vId, { status: val.status, metadata: transformedMeta, validation: val, processing_progress: 100 });
+    await this.logActivity('transform', `Transformation completed for variant of ${vId}`, 'success', vId);
   }
   private runValidationLogic(metadata: any, profile: Profile): ValidationResult {
     const violations: ValidationViolation[] = [];
     profile.rules.forEach(rule => {
-      let actual: any;
-      const parts = rule.field.split('.');
-      actual = metadata;
-      for (const part of parts) {
-        actual = actual?.[part];
-      }
+      let actual: any = metadata;
+      rule.field.split('.').forEach(p => actual = actual?.[p]);
       let failed = false;
       if (rule.operator === 'eq' && actual !== rule.value) failed = true;
       if (rule.operator === 'lte' && Number(actual) > Number(rule.value)) failed = true;
-      if (rule.operator === 'gte' && Number(actual) < Number(rule.value)) failed = true;
-      if (rule.operator === 'contains' && !String(actual).includes(String(rule.value))) failed = true;
       if (failed) {
         violations.push({
           rule_id: rule.id,
@@ -221,29 +164,36 @@ export class GlobalDurableObject extends DurableObject {
           expected: rule.value,
           message: rule.message,
           severity: rule.severity,
-          fix: rule.fix
+          fix: rule.fix,
+          reason: rule.reason
         });
       }
     });
-    const hasCritical = violations.some(v => v.severity === 'critical');
-    const status = violations.length === 0 ? 'pass' : (hasCritical ? 'fail' : 'warning');
     return {
-      status,
+      status: violations.length === 0 ? 'pass' : (violations.some(v => v.severity === 'critical') ? 'fail' : 'warning'),
       violations,
       validated_at: new Date().toISOString()
     };
   }
-  async batchValidate(assetIds: string[], profileId?: string): Promise<void> {
-    for (const id of assetIds) {
-      const asset = await this.getAssetDetails(id);
-      if (asset) {
-        if (profileId) {
-          await this.updateAsset(id, { profile_id: profileId, status: 'queued', processing_progress: 0 });
-        } else {
-          await this.updateAsset(id, { status: 'queued', processing_progress: 0 });
-        }
-        this.processAsset(id);
-      }
+  async deleteAssets(ids: string[]): Promise<void> {
+    const assets = (await this.getAssets()).filter(a => !ids.includes(a.id));
+    await this.ctx.storage.put("assets", assets);
+    await this.logActivity('system', `Deleted ${ids.length} assets from library`, 'info');
+  }
+  async batchValidate(ids: string[]): Promise<void> {
+    for (const id of ids) this.processAsset(id);
+  }
+  async deleteProfile(id: string) {
+    const profiles = (await this.getProfiles()).filter(p => p.id !== id);
+    await this.ctx.storage.put("profiles", profiles);
+  }
+  async updateProfile(id: string, data: ProfileUpdate) {
+    const profiles = await this.getProfiles();
+    const idx = profiles.findIndex(p => p.id === id);
+    if (idx !== -1) {
+      profiles[idx] = { ...profiles[idx], ...data, updated_at: new Date().toISOString() };
+      await this.ctx.storage.put("profiles", profiles);
+      return profiles[idx];
     }
   }
 }

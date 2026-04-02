@@ -1,15 +1,39 @@
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Upload, BarChart3, FileVideo, ShieldCheck, ArrowRight } from 'lucide-react';
+import { 
+  Upload, 
+  BarChart3, 
+  FileVideo, 
+  ShieldCheck, 
+  ArrowRight, 
+  Activity, 
+  Clock, 
+  CheckCircle2, 
+  AlertCircle,
+  Zap
+} from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import type { ApiResponse, SystemActivity, Asset } from '@shared/types';
+import { format } from 'date-fns';
 export function HomePage() {
   const navigate = useNavigate();
   const [isUploading, setIsUploading] = useState(false);
+  const { data: activityData } = useQuery<ApiResponse<SystemActivity[]>>({
+    queryKey: ['activity'],
+    queryFn: () => fetch('/api/activity').then(res => res.json()),
+    refetchInterval: 5000
+  });
+  const { data: assetsData } = useQuery<ApiResponse<Asset[]>>({
+    queryKey: ['assets'],
+    queryFn: () => fetch('/api/assets').then(res => res.json())
+  });
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
     setIsUploading(true);
@@ -26,97 +50,116 @@ export function HomePage() {
         navigate(`/assets/${result.data.id}`);
       }
     } catch (error) {
-      toast.error("Upload simulation failed");
+      toast.error("Ingestion failed");
     } finally {
       setIsUploading(false);
     }
   }, [navigate]);
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
-    onDrop, 
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
     multiple: false,
-    accept: { 'video/*': ['.mp4', '.mov', '.mxf', '.mkv'] }
+    accept: { 'video/*': ['.mp4', '.mov', '.mxf'] }
   });
+  const activities = activityData?.data ?? [];
+  const assets = assetsData?.data ?? [];
+  // Simulated trend data
+  const trendData = Array.from({ length: 7 }).map((_, i) => ({
+    day: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+    rate: 85 + Math.random() * 14
+  }));
   return (
     <AppLayout>
       <div className="space-y-12">
-        {/* Hero Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-3xl bg-zinc-950 p-8 md:p-12 text-white"
-        >
-          <div className="absolute inset-0 bg-gradient-mesh opacity-20 pointer-events-none" />
-          <div className="relative z-10 max-w-2xl">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 leading-tight">
-              Enterprise Grade <br /> <span className="text-zinc-400">Media Compliance</span>
-            </h1>
-            <p className="text-lg text-zinc-400 mb-8 text-pretty">
-              Automate metadata extraction and deterministic profile validation. 
-              Upload an asset to begin the compliance check.
-            </p>
-            <div className="flex gap-4">
-              <Button size="lg" className="bg-white text-black hover:bg-zinc-200" onClick={() => navigate('/assets')}>
-                View Library <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </motion.div>
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            { label: 'Total Ingested', value: '1,284', icon: FileVideo, sub: '+12% this week' },
-            { label: 'Avg Compliance', value: '94.2%', icon: ShieldCheck, sub: 'Target: >95%' },
-            { label: 'Validation Runs', value: '45.1k', icon: BarChart3, sub: 'Real-time engine' },
-          ].map((stat, i) => (
-            <motion.div 
-              key={stat.label}
+        <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex-1 space-y-8">
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
+              className="relative overflow-hidden rounded-3xl bg-zinc-950 p-8 md:p-12 text-white"
             >
+              <div className="absolute inset-0 bg-gradient-mesh opacity-20" />
+              <div className="relative z-10 max-w-xl">
+                <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 leading-tight">
+                  Intelligence Hub
+                </h1>
+                <p className="text-lg text-zinc-400 mb-8">
+                  Autonomous technical compliance for mission-critical video workflows.
+                </p>
+                <div {...getRootProps()} className={`
+                  border-2 border-dashed rounded-2xl p-8 transition-all cursor-pointer text-center
+                  ${isDragActive ? 'border-primary bg-white/10' : 'border-zinc-800 hover:border-zinc-700 bg-white/5'}
+                `}>
+                  <input {...getInputProps()} />
+                  <Upload className="h-6 w-6 mx-auto mb-3 text-zinc-500" />
+                  <p className="text-sm font-medium">{isUploading ? 'Ingesting...' : 'Drop video to analyze'}</p>
+                </div>
+              </div>
+            </motion.div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">{stat.label}</CardTitle>
-                  <stat.icon className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold font-mono tracking-tight">{stat.value}</div>
-                  <p className="text-xs text-muted-foreground mt-1">{stat.sub}</p>
+                <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Activity className="h-4 w-4" /> Compliance Health</CardTitle></CardHeader>
+                <CardContent className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={trendData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
+                      <XAxis dataKey="day" fontSize={10} axisLine={false} tickLine={false} />
+                      <YAxis hide domain={[80, 100]} />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="rate" stroke="hsl(var(--primary))" strokeWidth={3} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
-            </motion.div>
-          ))}
-        </div>
-        {/* Upload Zone */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.4 }}
-        >
-          <div 
-            {...getRootProps()} 
-            className={`
-              border-2 border-dashed rounded-3xl p-16 text-center transition-all cursor-pointer
-              ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/20 hover:border-primary/50'}
-              ${isUploading ? 'opacity-50 pointer-events-none' : ''}
-            `}
-          >
-            <input {...getInputProps()} />
-            <div className="flex flex-col items-center gap-4">
-              <div className="p-4 rounded-full bg-secondary">
-                <Upload className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-xl font-semibold">
-                  {isUploading ? 'Ingesting Asset...' : 'Drop media file here'}
-                </p>
-                <p className="text-muted-foreground">
-                  Support for MP4, MOV, MXF (Max 5GB)
-                </p>
-              </div>
+              <Card>
+                <CardHeader><CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Queue Stats</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex justify-between items-end border-b pb-4">
+                    <span className="text-sm text-muted-foreground">Total Ingested</span>
+                    <span className="text-3xl font-mono font-bold">{assets.length}</span>
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <span className="text-sm text-muted-foreground">Active Jobs</span>
+                    <span className="text-3xl font-mono font-bold text-blue-500">
+                      {assets.filter(a => a.status === 'processing' || a.status === 'transcoding').length}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
-        </motion.div>
+          <aside className="w-full lg:w-96">
+            <Card className="h-full">
+              <CardHeader className="flex flex-row items-center justify-between border-b bg-muted/20">
+                <CardTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
+                  <Clock className="h-4 w-4" /> System Feed
+                </CardTitle>
+                <Badge variant="outline" className="text-[10px]">LIVE</Badge>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y max-h-[600px] overflow-y-auto">
+                  {activities.length === 0 ? (
+                    <div className="p-12 text-center text-muted-foreground text-sm italic">No recent activity.</div>
+                  ) : (
+                    activities.map((item) => (
+                      <div key={item.id} className="p-4 hover:bg-muted/10 transition-colors">
+                        <div className="flex gap-3">
+                          <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${
+                            item.status === 'success' ? 'bg-emerald-500' : 
+                            item.status === 'failure' ? 'bg-rose-500' : 'bg-blue-500'
+                          }`} />
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium leading-tight">{item.message}</p>
+                            <p className="text-[10px] text-muted-foreground font-mono">{format(new Date(item.timestamp), 'HH:mm:ss')}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </aside>
+        </div>
       </div>
     </AppLayout>
   );

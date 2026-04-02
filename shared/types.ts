@@ -22,6 +22,7 @@ export interface Rule {
   severity: 'critical' | 'warning';
   message: string;
   fix: string;
+  reason?: string; // Engineering rationale
 }
 export interface ValidationViolation {
   rule_id: string;
@@ -31,6 +32,7 @@ export interface ValidationViolation {
   message: string;
   severity: 'critical' | 'warning';
   fix: string;
+  reason?: string; // Reason passed from rule
 }
 export interface ValidationResult {
   status: 'pass' | 'fail' | 'warning';
@@ -61,10 +63,17 @@ export interface Asset {
     audio: AudioMetadata;
   };
   validation?: ValidationResult;
-  // Lineage Tracking
   parent_id?: string;
   lineage_root_id?: string;
   job_id?: string;
+}
+export interface SystemActivity {
+  id: string;
+  type: 'ingest' | 'validation' | 'transform' | 'system';
+  message: string;
+  timestamp: string;
+  status: 'success' | 'failure' | 'info';
+  asset_id?: string;
 }
 export type TransformationType = 'transcode' | 'extract' | 'optimize' | 'remux';
 export interface TransformationJob {

@@ -1,9 +1,8 @@
 import { Hono } from "hono";
 import { Env } from './core-utils';
-import type { ApiResponse, ProfileCreate, ProfileUpdate, BatchActionRequest } from '@shared/types';
+import type { ApiResponse, ProfileCreate, ProfileUpdate, BatchActionRequest, Asset } from '@shared/types';
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const getStub = (c: any) => c.env.GlobalDurableObject.get(c.env.GlobalDurableObject.idFromName("global"));
-    // --- Asset Routes ---
     app.get('/api/assets', async (c) => {
         const stub = getStub(c);
         const data = await stub.getAssets();
@@ -22,37 +21,33 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         const data = await stub.createAsset(body.filename, body.size, body.profile_id);
         return c.json({ success: true, data } satisfies ApiResponse);
     });
+    app.get('/api/activity', async (c) => {
+        const stub = getStub(c);
+        const data = await stub.getRecentActivity();
+        return c.json({ success: true, data } satisfies ApiResponse);
+    });
     app.post('/api/assets/:id/transform', async (c) => {
         const id = c.req.param('id');
         const body = await c.req.json() as { targetProfileId: string };
         const stub = getStub(c);
         const data = await stub.transformAsset(id, body.targetProfileId);
-        if (!data) return c.json({ success: false, error: 'Transformation failed or asset not found' }, 404);
+        if (!data) return c.json({ success: false, error: 'Transformation failed' }, 404);
         return c.json({ success: true, data } satisfies ApiResponse);
     });
     app.get('/api/assets/:id/variants', async (c) => {
         const id = c.req.param('id');
         const stub = getStub(c);
-        const allAssets = await stub.getAssets();
-        const variants = allAssets.filter(a => a.parent_id === id);
+        const allAssets = await stub.getAssets() as Asset[];
+        const variants = allAssets.filter((a: Asset) => a.parent_id === id);
         return c.json({ success: true, data: variants } satisfies ApiResponse);
     });
-    // --- Batch Operations ---
     app.post('/api/assets/batch', async (c) => {
-        const { assetIds, action, targetProfileId } = await c.req.json() as BatchActionRequest;
+        const { assetIds, action } = await c.req.json() as BatchActionRequest;
         const stub = getStub(c);
-        if (action === 'delete') {
-            await stub.deleteAssets(assetIds);
-        } else if (action === 'validate') {
-            await stub.batchValidate(assetIds, targetProfileId);
-        } else if (action === 'transform' && targetProfileId) {
-            for (const id of assetIds) {
-                await stub.transformAsset(id, targetProfileId);
-            }
-        }
+        if (action === 'delete') await stub.deleteAssets(assetIds);
+        else if (action === 'validate') await stub.batchValidate(assetIds);
         return c.json({ success: true } satisfies ApiResponse);
     });
-    // --- Profile Routes ---
     app.get('/api/profiles', async (c) => {
         const stub = getStub(c);
         const data = await stub.getProfiles();
@@ -69,7 +64,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         const body = await c.req.json() as ProfileUpdate;
         const stub = getStub(c);
         const data = await stub.updateProfile(id, body);
-        if (!data) return c.json({ success: false, error: 'Profile not found' }, 404);
         return c.json({ success: true, data } satisfies ApiResponse);
     });
     app.delete('/api/profiles/:id', async (c) => {

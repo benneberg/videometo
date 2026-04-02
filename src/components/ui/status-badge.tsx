@@ -1,8 +1,8 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, XCircle, AlertTriangle, Loader2, Clock } from 'lucide-react';
-export type StatusType = 'pass' | 'fail' | 'warning' | 'processing' | 'queued';
+import { CheckCircle2, XCircle, AlertTriangle, Loader2, Clock, RefreshCw } from 'lucide-react';
+export type StatusType = 'pass' | 'fail' | 'warning' | 'processing' | 'queued' | 'transcoding';
 interface StatusBadgeProps {
   status: StatusType;
   className?: string;
@@ -33,12 +33,17 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       label: 'Queued',
       color: 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20',
       icon: Clock
+    },
+    transcoding: {
+      label: 'Transcoding',
+      color: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20',
+      icon: RefreshCw
     }
   };
   const { label, color, icon: Icon } = config[status] || config.queued;
   return (
     <Badge variant="outline" className={cn("px-2 py-0.5 font-medium gap-1.5 whitespace-nowrap", color, className)}>
-      <Icon className={cn("h-3.5 w-3.5", status === 'processing' && "animate-spin")} />
+      <Icon className={cn("h-3.5 w-3.5", (status === 'processing' || status === 'transcoding') && "animate-spin")} />
       {label.toUpperCase()}
     </Badge>
   );
