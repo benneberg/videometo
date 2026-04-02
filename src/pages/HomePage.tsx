@@ -121,8 +121,8 @@ export function HomePage() {
                 <CardHeader><CardTitle className="text-sm font-bold flex items-center gap-2"><BarChart3 className="h-4 w-4" /> 24h Throughput</CardTitle></CardHeader>
                 <CardContent>
                    <div className="text-3xl font-mono font-bold mb-4">{stats?.completed_24h || 0}</div>
-                   <div className="h-[60px]">
-                      <ResponsiveContainer width="100%" height="100%">
+                   <div className="h-[200px]">
+                      <ResponsiveContainer width="100%" height="100%" minHeight={200}>
                         <LineChart data={trendData}>
                           <Line type="monotone" dataKey="rate" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
                         </LineChart>

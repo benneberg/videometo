@@ -152,7 +152,7 @@ export function AssetDetailPage() {
               <Card className="lg:col-span-2">
                 <CardHeader><CardTitle className="text-sm font-semibold">Bitrate Stability Analysis</CardTitle></CardHeader>
                 <CardContent className="h-[240px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={250}>
                     <AreaChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis dataKey="time" hide />
@@ -175,6 +175,51 @@ export function AssetDetailPage() {
               </Card>
             </div>
           </TabsContent>
+          <TabsContent value="metadata" className="space-y-6 pt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader><CardTitle className="text-sm font-semibold">Video Stream</CardTitle></CardHeader>
+                <CardContent className="pt-6 space-y-4 text-sm">
+                  {asset.metadata?.video ? (
+                    <>
+                      <div className="grid grid-cols-3 gap-4 text-xs">
+                        <div><span className="text-muted-foreground">Codec</span><div className="font-mono font-semibold">{asset.metadata.video.codec_name}</div></div>
+                        <div><span className="text-muted-foreground">Resolution</span><div className="font-mono font-semibold">{asset.metadata.video.width}x{asset.metadata.video.height}</div></div>
+                        <div><span className="text-muted-foreground">Duration</span><div className="font-mono font-semibold">{asset.metadata.video.duration ? (asset.metadata.video.duration.toFixed(1) + 's') : 'N/A'}</div></div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 text-xs">
+                        <div><span className="text-muted-foreground">Bitrate</span><div className="font-mono font-semibold">{asset.metadata.video.bitrate ? ((asset.metadata.video.bitrate/1000000).toFixed(1) + ' Mbps') : 'N/A'}</div></div>
+                        <div><span className="text-muted-foreground">FPS</span><div className="font-mono font-semibold">{asset.metadata.video.r_frame_rate}</div></div>
+                        <div><span className="text-muted-foreground">Profile</span><div className="font-mono font-semibold">{asset.metadata.video.profile}</div></div>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground italic">No video metadata available</p>
+                  )}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader><CardTitle className="text-sm font-semibold">Audio Stream</CardTitle></CardHeader>
+                <CardContent className="pt-6 space-y-4 text-sm">
+                  {asset.metadata?.audio ? (
+                    <>
+                      <div className="grid grid-cols-3 gap-4 text-xs">
+                        <div><span className="text-muted-foreground">Codec</span><div className="font-mono font-semibold">{asset.metadata.audio.codec_name}</div></div>
+                        <div><span className="text-muted-foreground">Channels</span><div className="font-mono font-semibold">{asset.metadata.audio.channels}</div></div>
+                        <div><span className="text-muted-foreground">Sample Rate</span><div className="font-mono font-semibold">{asset.metadata.audio.sample_rate}Hz</div></div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 text-xs">
+                        <div><span className="text-muted-foreground">Bitrate</span><div className="font-mono font-semibold">{asset.metadata.audio.bitrate ? ((asset.metadata.audio.bitrate/1000).toFixed(0) + ' kbps') : 'N/A'}</div></div>
+                        <div><span className="text-muted-foreground">Bit Depth</span><div className="font-mono font-semibold">{asset.metadata.audio.bits_per_sample || 'N/A'}</div></div>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground italic">No audio metadata available</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
           <TabsContent value="audit" className="pt-6">
             <Card className="bg-zinc-950 border-white/10">
               <CardHeader className="border-b border-white/10 bg-white/5">
@@ -189,7 +234,7 @@ export function AssetDetailPage() {
                   ) : (
                     job.logs.map((log, i) => (
                       <div key={i} className="p-3 flex gap-4 hover:bg-white/5 transition-colors">
-                        <span className="text-zinc-600 shrink-0">[{format(new Date(log.timestamp), 'HH:mm:ss.SSS')}]</span>
+                        <span className="text-zinc-600 shrink-0">[{new Date(log.timestamp).toLocaleTimeString('en-US', {hour12: false, fractionalSecondDigits: 3 })}]</span>
                         <span className={log.level === 'error' ? 'text-rose-500' : (log.level === 'warn' ? 'text-amber-500' : 'text-blue-400')}>
                           {log.message}
                         </span>
