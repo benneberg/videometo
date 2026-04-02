@@ -22,6 +22,21 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         const data = await stub.createAsset(body.filename, body.size, body.profile_id);
         return c.json({ success: true, data } satisfies ApiResponse);
     });
+    app.post('/api/assets/:id/transform', async (c) => {
+        const id = c.req.param('id');
+        const body = await c.req.json() as { targetProfileId: string };
+        const stub = getStub(c);
+        const data = await stub.transformAsset(id, body.targetProfileId);
+        if (!data) return c.json({ success: false, error: 'Transformation failed or asset not found' }, 404);
+        return c.json({ success: true, data } satisfies ApiResponse);
+    });
+    app.get('/api/assets/:id/variants', async (c) => {
+        const id = c.req.param('id');
+        const stub = getStub(c);
+        const allAssets = await stub.getAssets();
+        const variants = allAssets.filter(a => a.parent_id === id);
+        return c.json({ success: true, data: variants } satisfies ApiResponse);
+    });
     // --- Batch Operations ---
     app.post('/api/assets/batch', async (c) => {
         const { assetIds, action, targetProfileId } = await c.req.json() as BatchActionRequest;
@@ -30,6 +45,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
             await stub.deleteAssets(assetIds);
         } else if (action === 'validate') {
             await stub.batchValidate(assetIds, targetProfileId);
+        } else if (action === 'transform' && targetProfileId) {
+            for (const id of assetIds) {
+                await stub.transformAsset(id, targetProfileId);
+            }
         }
         return c.json({ success: true } satisfies ApiResponse);
     });

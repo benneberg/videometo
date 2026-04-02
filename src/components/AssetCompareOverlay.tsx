@@ -34,8 +34,8 @@ export function AssetCompareOverlay({ sourceAssetId, variantAssetId, onClose }: 
   });
   const source = sourceData?.data;
   const variant = variantData?.data;
-  const getDelta = (sourceVal: number | undefined, variantVal: number | undefined) => {
-    if (sourceVal === undefined || sourceVal === 0 || variantVal === undefined) return null;
+  const getDelta = (sourceVal: number, variantVal: number) => {
+    if (!sourceVal) return null;
     const diff = ((variantVal - sourceVal) / sourceVal) * 100;
     return diff.toFixed(1);
   };
@@ -78,17 +78,17 @@ export function AssetCompareOverlay({ sourceAssetId, variantAssetId, onClose }: 
           <div className="p-8 flex-1 space-y-8 overflow-y-auto">
             {/* Top Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <ComparisonCard
-                title="Source File"
-                asset={source}
-                isSource
-                status={source.status || 'unknown'}
+              <ComparisonCard 
+                title="Source File" 
+                asset={source} 
+                isSource 
+                status={source.status}
               />
-              <ComparisonCard
-                title="Transformed Variant"
-                asset={variant}
+              <ComparisonCard 
+                title="Transformed Variant" 
+                asset={variant} 
                 status={variant.status}
-                delta={getDelta(source.size, variant.size) ? `${getDelta(source.size, variant.size)}% Size` : undefined}
+                delta={`${getDelta(source.size, variant.size)}% Size`}
               />
             </div>
             <Separator />
@@ -103,16 +103,16 @@ export function AssetCompareOverlay({ sourceAssetId, variantAssetId, onClose }: 
                   source={source.metadata?.video.resolution} 
                   variant={variant.metadata?.video.resolution} 
                 />
-                <SpecRow
-                  label="Bitrate"
-                  source={source.metadata?.video?.bitrate ? `${(source.metadata.video.bitrate / 1000000).toFixed(2)} Mbps` : 'N/A'}
-                  variant={variant.metadata?.video?.bitrate ? `${(variant.metadata.video.bitrate / 1000000).toFixed(2)} Mbps` : 'N/A'}
-                  delta={source.metadata?.video?.bitrate && variant.metadata?.video?.bitrate ? `${getDelta(source.metadata.video.bitrate, variant.metadata.video.bitrate)}%` : undefined}
+                <SpecRow 
+                  label="Bitrate" 
+                  source={`${(source.metadata!.video.bitrate / 1000000).toFixed(2)} Mbps`} 
+                  variant={`${(variant.metadata!.video.bitrate / 1000000).toFixed(2)} Mbps`} 
+                  delta={`${getDelta(source.metadata!.video.bitrate, variant.metadata!.video.bitrate)}%`}
                 />
-                <SpecRow
-                  label="Codec"
-                  source={source.metadata?.video?.codec?.toUpperCase()}
-                  variant={variant.metadata?.video?.codec?.toUpperCase()}
+                <SpecRow 
+                  label="Codec" 
+                  source={source.metadata?.video.codec.toUpperCase()} 
+                  variant={variant.metadata?.video.codec.toUpperCase()} 
                 />
               </div>
             </div>
@@ -128,22 +128,10 @@ export function AssetCompareOverlay({ sourceAssetId, variantAssetId, onClose }: 
                 </div>
               </CardHeader>
               <CardContent className="h-[200px] p-0">
-                <ResponsiveContainer width="100%" height="100%" minHeight={200}>
+                <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={waveformData}>
-                    <defs>
-                      <linearGradient id="sourceFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                        <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="variantFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.2}/>
-                        <stop offset="100%" stopColor="#10b981" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <Area type="monotone" dataKey="source" stroke="hsl(var(--primary))" fill="url(#sourceFill)" strokeWidth={2} />
-                    <Area type="monotone" dataKey="variant" stroke="#10b981" fill="url(#variantFill)" strokeWidth={2} strokeDasharray="3 3" />
-                    <XAxis dataKey="time" hide />
-                    <YAxis hide domain={['dataMin', 'dataMax']} />
+                    <Area type="monotone" dataKey="source" stroke="hsl(var(--primary))" fill="none" strokeWidth={1} />
+                    <Area type="monotone" dataKey="variant" stroke="#10b981" fill="none" strokeWidth={1} strokeDasharray="4 4" />
                   </AreaChart>
                 </ResponsiveContainer>
               </CardContent>

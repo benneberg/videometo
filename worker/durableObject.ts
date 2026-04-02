@@ -1,5 +1,15 @@
 import { DurableObject } from "cloudflare:workers";
-import type { Asset, Profile, Rule, ValidationViolation, ValidationResult, ProfileCreate, ProfileUpdate, AssetStatus } from '@shared/types';
+import type { 
+  Asset, 
+  Profile, 
+  Rule, 
+  ValidationViolation, 
+  ValidationResult, 
+  ProfileCreate, 
+  ProfileUpdate, 
+  AssetStatus,
+  TransformationJob
+} from '@shared/types';
 const DEFAULT_PROFILES: Profile[] = [
   {
     id: 'p1',
@@ -60,10 +70,10 @@ export class GlobalDurableObject extends DurableObject {
     const profiles = await this.getProfiles();
     const index = profiles.findIndex(p => p.id === id);
     if (index === -1) return undefined;
-    profiles[index] = { 
-      ...profiles[index], 
-      ...data, 
-      updated_at: new Date().toISOString() 
+    profiles[index] = {
+      ...profiles[index],
+      ...data,
+      updated_at: new Date().toISOString()
     };
     await this.ctx.storage.put("profiles", profiles);
     return profiles[index];
@@ -86,19 +96,81 @@ export class GlobalDurableObject extends DurableObject {
     };
     const updated = [newAsset, ...assets];
     await this.ctx.storage.put("assets", updated);
-    // Trigger "async" processing simulation
     this.processAsset(newAsset.id);
     return newAsset;
+  }
+  async transformAsset(sourceId: string, targetProfileId: string): Promise<Asset | undefined> {
+    const source = await this.getAssetDetails(sourceId);
+    if (!source) return undefined;
+    const profiles = await this.getProfiles();
+    const targetProfile = profiles.find(p => p.id === targetProfileId);
+    if (!targetProfile) return undefined;
+    const assets = await this.getAssets();
+    const variantAsset: Asset = {
+      id: crypto.randomUUID(),
+      filename: `${source.filename.split('.')[0]}_${targetProfile.name.replace(/\s+/g, '_')}.mp4`,
+      size: source.size * (0.6 + Math.random() * 0.3), // Simulate optimized size
+      status: 'transcoding',
+      processing_progress: 0,
+      profile_id: targetProfileId,
+      created_at: new Date().toISOString(),
+      parent_id: sourceId,
+      lineage_root_id: source.lineage_root_id || sourceId,
+      job_id: crypto.randomUUID()
+    };
+    const updated = [variantAsset, ...assets];
+    await this.ctx.storage.put("assets", updated);
+    this.processTransformation(variantAsset.id, sourceId, targetProfileId);
+    return variantAsset;
+  }
+  private async processTransformation(variantId: string, sourceId: string, profileId: string) {
+    const variant = await this.getAssetDetails(variantId);
+    const source = await this.getAssetDetails(sourceId);
+    const profiles = await this.getProfiles();
+    const targetProfile = profiles.find(p => p.id === profileId);
+    if (!variant || !source || !targetProfile) return;
+    // Simulate transcoding delay and progress
+    const steps = [20, 50, 85, 100];
+    for (const progress of steps) {
+      await new Promise(r => setTimeout(r, 1000));
+      await this.updateAsset(variantId, { processing_progress: progress });
+    }
+    // Generate Transformed Metadata aligned with profile
+    // We deterministically map source metadata to profile rules
+    const videoMetadata = { ...(source.metadata?.video || {
+      codec: 'h264',
+      bitrate: 8000000,
+      fps: 30,
+      resolution: '1920x1080',
+      duration: 30,
+      format: 'mp4',
+      color_space: 'bt709'
+    }) };
+    // Apply "transformations" based on rules to fix things
+    targetProfile.rules.forEach(rule => {
+      if (rule.field === 'video.resolution' && rule.operator === 'eq') videoMetadata.resolution = String(rule.value);
+      if (rule.field === 'video.codec' && rule.operator === 'eq') videoMetadata.codec = String(rule.value);
+      if (rule.field === 'video.bitrate' && rule.operator === 'lte') videoMetadata.bitrate = Math.min(videoMetadata.bitrate, Number(rule.value));
+    });
+    const transformedMetadata = {
+      video: videoMetadata,
+      audio: source.metadata?.audio || { codec: 'aac', channels: 2, sample_rate: 48000, bitrate: 192000 }
+    };
+    const validation = this.runValidationLogic(transformedMetadata, targetProfile);
+    await this.updateAsset(variantId, {
+      status: validation.status,
+      metadata: transformedMetadata,
+      validation,
+      processing_progress: 100
+    });
   }
   private async processAsset(assetId: string) {
     const asset = await this.getAssetDetails(assetId);
     if (!asset) return;
-    // Simulate progress
     await this.updateAsset(assetId, { status: 'processing', processing_progress: 25 });
     await new Promise(r => setTimeout(r, 800));
     await this.updateAsset(assetId, { processing_progress: 60 });
     await new Promise(r => setTimeout(r, 800));
-    // Generate Mock Metadata
     const mockMetadata = {
       video: {
         codec: Math.random() > 0.2 ? 'h264' : 'prores',
@@ -116,7 +188,6 @@ export class GlobalDurableObject extends DurableObject {
         bitrate: 192000
       }
     };
-    // Run Validation
     const profiles = await this.getProfiles();
     const targetProfile = profiles.find(p => p.id === asset.profile_id) || profiles[0];
     const validation = this.runValidationLogic(mockMetadata, targetProfile);

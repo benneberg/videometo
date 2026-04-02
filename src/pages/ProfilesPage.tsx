@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ShieldCheck, Plus, Trash2, Info, AlertTriangle, Terminal } from 'lucide-react';
+import { ShieldCheck, Plus, Trash2, Info, AlertTriangle, Terminal, Zap } from 'lucide-react';
 import type { Profile, ApiResponse, Rule, RuleOperator, ProfileCreate } from '@shared/types';
 import { toast } from 'sonner';
 export function ProfilesPage() {
@@ -49,7 +49,7 @@ export function ProfilesPage() {
             <DialogTrigger asChild>
               <Button size="lg" className="shadow-lg"><Plus className="h-4 w-4 mr-2" /> Create Profile</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <ProfileForm
                 onSubmit={(data) => createMutation.mutate(data)}
                 onCancel={() => setIsCreateOpen(false)}
@@ -70,7 +70,7 @@ export function ProfilesPage() {
             </div>
           ) : (
             profiles.map((profile) => (
-              <Card key={profile.id} className="group relative border-border/60 hover:border-primary/50 transition-all shadow-sm hover:shadow-md">
+              <Card key={profile.id} className="group relative border-border/60 hover:border-primary/50 transition-all shadow-sm hover:shadow-md overflow-hidden">
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div className="h-12 w-12 rounded-xl bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors duration-300">
@@ -151,7 +151,9 @@ function ProfileForm({ onSubmit, onCancel, isSubmitting }: { onSubmit: (data: Pr
   return (
     <div className="space-y-8 py-4">
       <DialogHeader>
-        <DialogTitle className="text-2xl font-bold">New Deployment Profile</DialogTitle>
+        <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+          <Zap className="h-6 w-6 text-primary" /> New Deployment Profile
+        </DialogTitle>
       </DialogHeader>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
@@ -204,8 +206,8 @@ function ProfileForm({ onSubmit, onCancel, isSubmitting }: { onSubmit: (data: Pr
                     <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="eq">Equal To (==)</SelectItem>
-                      <SelectItem value="lte">Max Bound (<=)</SelectItem>
-                      <SelectItem value="gte">Min Bound (>=)</SelectItem>
+                      <SelectItem value="lte">{"Max Bound (<=)"}</SelectItem>
+                      <SelectItem value="gte">{"Min Bound (>=)"}</SelectItem>
                       <SelectItem value="contains">Includes (str)</SelectItem>
                     </SelectContent>
                   </Select>
@@ -238,8 +240,8 @@ function ProfileForm({ onSubmit, onCancel, isSubmitting }: { onSubmit: (data: Pr
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground">Remediation Suggestion</Label>
-                  <Input placeholder="Command or process to fix..." className="h-9 text-xs" value={rule.fix} onChange={e => updateRule(rule.id, { fix: e.target.value })} />
+                  <Label className="text-[10px] font-bold uppercase text-muted-foreground">Remediation Script (Transformation Logic)</Label>
+                  <Input placeholder="ffmpeg command..." className="h-9 text-xs font-mono bg-muted/30" value={rule.fix} onChange={e => updateRule(rule.id, { fix: e.target.value })} />
                 </div>
               </div>
             </div>
@@ -248,7 +250,7 @@ function ProfileForm({ onSubmit, onCancel, isSubmitting }: { onSubmit: (data: Pr
       </div>
       <DialogFooter className="sticky bottom-0 bg-background pt-4 border-t gap-2">
         <Button variant="ghost" onClick={onCancel}>Discard Changes</Button>
-        <Button size="lg" className="px-8" onClick={handleSave} disabled={isSubmitting}>
+        <Button size="lg" className="px-8 shadow-primary" onClick={handleSave} disabled={isSubmitting}>
           {isSubmitting ? "Compiling Profile..." : "Finalize Profile"}
         </Button>
       </DialogFooter>
