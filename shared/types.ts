@@ -13,10 +13,11 @@ export interface AudioMetadata {
   sample_rate: number;
   bitrate: number;
 }
+export type RuleOperator = 'eq' | 'lte' | 'gte' | 'contains' | 'regex';
 export interface Rule {
   id: string;
   field: string;
-  operator: 'eq' | 'lte' | 'gte' | 'contains';
+  operator: RuleOperator;
   value: string | number;
   severity: 'critical' | 'warning';
   message: string;
@@ -41,18 +42,30 @@ export interface Profile {
   name: string;
   description: string;
   rules: Rule[];
+  created_at: string;
+  updated_at: string;
 }
+export type ProfileCreate = Omit<Profile, 'id' | 'created_at' | 'updated_at'>;
+export type ProfileUpdate = Partial<ProfileCreate>;
+export type AssetStatus = 'queued' | 'processing' | 'pass' | 'fail' | 'warning';
 export interface Asset {
   id: string;
   filename: string;
   size: number;
-  status: 'processing' | 'pass' | 'fail' | 'warning';
+  status: AssetStatus;
+  processing_progress: number;
+  profile_id?: string;
   created_at: string;
   metadata?: {
     video: VideoMetadata;
     audio: AudioMetadata;
   };
   validation?: ValidationResult;
+}
+export interface BatchActionRequest {
+  assetIds: string[];
+  action: 'validate' | 'delete' | 'export';
+  targetProfileId?: string;
 }
 export interface ApiResponse<T = unknown> {
   success: boolean;
