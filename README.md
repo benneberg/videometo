@@ -1,6 +1,6 @@
 # Cloudflare Workers React Template
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/benneberg/videometo)
 
 A production-ready fullstack boilerplate combining Cloudflare Workers (backend) with a modern React frontend powered by Vite, shadcn/ui, Tailwind CSS, and TanStack Query. Includes Durable Objects for stateful storage, type-safe APIs, error handling, and a beautiful responsive UI.
 
@@ -108,7 +108,7 @@ npx wrangler deploy
 - Durable Objects auto-migrate via `wrangler.jsonc`
 - Set `wrangler.toml` secrets if needed: `wrangler secret put <KEY>`
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/benneberg/videometo)
 
 ## Environment Variables
 
