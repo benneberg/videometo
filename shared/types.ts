@@ -22,7 +22,7 @@ export interface Rule {
   severity: 'critical' | 'warning';
   message: string;
   fix: string;
-  reason?: string; // Engineering rationale
+  reason?: string;
 }
 export interface ValidationViolation {
   rule_id: string;
@@ -32,7 +32,7 @@ export interface ValidationViolation {
   message: string;
   severity: 'critical' | 'warning';
   fix: string;
-  reason?: string; // Reason passed from rule
+  reason?: string;
 }
 export interface ValidationResult {
   status: 'pass' | 'fail' | 'warning';
@@ -49,6 +49,25 @@ export interface Profile {
 }
 export type ProfileCreate = Omit<Profile, 'id' | 'created_at' | 'updated_at'>;
 export type ProfileUpdate = Partial<ProfileCreate>;
+export type JobStatus = 'queued' | 'running' | 'completed' | 'failed';
+export type JobType = 'ingest' | 'transform' | 'validate';
+export interface JobLog {
+  timestamp: string;
+  message: string;
+  level: 'info' | 'warn' | 'error';
+}
+export interface Job {
+  id: string;
+  type: JobType;
+  status: JobStatus;
+  asset_id: string;
+  target_profile_id?: string;
+  progress: number;
+  logs: JobLog[];
+  started_at?: string;
+  completed_at?: string;
+  created_at: string;
+}
 export type AssetStatus = 'queued' | 'processing' | 'pass' | 'fail' | 'warning' | 'transcoding';
 export interface Asset {
   id: string;
@@ -57,6 +76,8 @@ export interface Asset {
   status: AssetStatus;
   processing_progress: number;
   profile_id?: string;
+  current_job_id?: string;
+  storage_path?: string;
   created_at: string;
   metadata?: {
     video: VideoMetadata;
@@ -64,8 +85,14 @@ export interface Asset {
   };
   validation?: ValidationResult;
   parent_id?: string;
-  lineage_root_id?: string;
-  job_id?: string;
+  expires_at?: string;
+}
+export interface QueueStats {
+  active_jobs: number;
+  queued_jobs: number;
+  completed_24h: number;
+  avg_wait_time: number;
+  system_load: number;
 }
 export interface SystemActivity {
   id: string;
@@ -74,17 +101,6 @@ export interface SystemActivity {
   timestamp: string;
   status: 'success' | 'failure' | 'info';
   asset_id?: string;
-}
-export type TransformationType = 'transcode' | 'extract' | 'optimize' | 'remux';
-export interface TransformationJob {
-  id: string;
-  asset_id: string;
-  source_asset_id: string;
-  target_profile_id: string;
-  type: TransformationType;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  progress: number;
-  created_at: string;
 }
 export interface BatchActionRequest {
   assetIds: string[];

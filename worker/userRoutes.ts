@@ -26,6 +26,26 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         const data = await stub.getRecentActivity();
         return c.json({ success: true, data } satisfies ApiResponse);
     });
+    app.get('/api/system/stats', async (c) => {
+        const stub = getStub(c);
+        const data = await stub.getQueueStats();
+        return c.json({ success: true, data } satisfies ApiResponse);
+    });
+    app.get('/api/jobs/:id', async (c) => {
+        const id = c.req.param('id');
+        const stub = getStub(c);
+        const data = await stub.getJob(id);
+        if (!data) return c.json({ success: false, error: 'Job not found' }, 404);
+        return c.json({ success: true, data } satisfies ApiResponse);
+    });
+    app.post('/api/jobs/:id/retry', async (c) => {
+        const id = c.req.param('id');
+        const stub = getStub(c);
+        const job = await stub.getJob(id);
+        if (!job) return c.json({ success: false, error: 'Job not found' }, 404);
+        const data = await stub.queueJob(job.type, job.asset_id, job.target_profile_id);
+        return c.json({ success: true, data } satisfies ApiResponse);
+    });
     app.post('/api/assets/:id/transform', async (c) => {
         const id = c.req.param('id');
         const body = await c.req.json() as { targetProfileId: string };
@@ -33,13 +53,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         const data = await stub.transformAsset(id, body.targetProfileId);
         if (!data) return c.json({ success: false, error: 'Transformation failed' }, 404);
         return c.json({ success: true, data } satisfies ApiResponse);
-    });
-    app.get('/api/assets/:id/variants', async (c) => {
-        const id = c.req.param('id');
-        const stub = getStub(c);
-        const allAssets = await stub.getAssets() as Asset[];
-        const variants = allAssets.filter((a: Asset) => a.parent_id === id);
-        return c.json({ success: true, data: variants } satisfies ApiResponse);
     });
     app.post('/api/assets/batch', async (c) => {
         const { assetIds, action } = await c.req.json() as BatchActionRequest;
