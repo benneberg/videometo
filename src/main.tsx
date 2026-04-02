@@ -15,6 +15,7 @@ import { HomePage } from '@/pages/HomePage'
 import { AssetsPage } from '@/pages/AssetsPage'
 import { AssetDetailPage } from '@/pages/AssetDetailPage'
 import { ProfilesPage } from '@/pages/ProfilesPage'
+import { SettingsPage } from '@/pages/SettingsPage'
 const queryClient = new QueryClient();
 const router = createBrowserRouter([
   {
@@ -35,6 +36,11 @@ const router = createBrowserRouter([
   {
     path: "/profiles",
     element: <ProfilesPage />,
+    errorElement: <RouteErrorBoundary />,
+  },
+  {
+    path: "/settings",
+    element: <SettingsPage />,
     errorElement: <RouteErrorBoundary />,
   },
 ]);
